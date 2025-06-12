@@ -1,0 +1,48 @@
+training:
+  epochs: 100
+  batch_size: 1
+  save_path: "/home/anhkhoa/transformer_transducer_speeQ/save_folder"
+  train_path : "/home/anhkhoa/transformer_transducer_speeQ/data/train.json"
+  dev_path : "/home/anhkhoa/transformer_transducer_speeQ/data/dev.json"
+  test_path : "/home/anhkhoa/transformer_transducer_speeQ/data/dev.json"
+  vocab_path : "/home/anhkhoa/transformer_transducer_speeQ/data/vocab.json"
+  reload: False
+  
+
+
+optim:
+  type: adam
+  lr: 0.0001
+  weight_decay: 0.0001
+  decay_rate: 0.5
+
+
+model:
+   in_features: 512
+   n_layers: 18
+   n_dec_layers: 2
+   d_model: 512
+   ff_size: 2048
+   h: 8
+   joint_size: 1024
+   enc_left_size: 512
+   enc_right_size: 512
+   dec_left_size: 512
+   dec_right_size: 512
+   p_dropout: 0.1
+   model_name: "transformer_transducer"
+
+# optim:
+#   type: sgd
+#   lr: 0.0001
+#   momentum: 0.9
+#   weight_decay: 0
+#   begin_to_adjust_lr: 60
+#   nesterov: None
+#   decay_rate: 0.5
+
+rnnt_loss:
+  blank: 4
+  reduction: "mean" 
+
+

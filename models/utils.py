@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import math
-from attention import MultiHeadAttentionBlock
+from .attention import MultiHeadAttentionBlock
 
 class FeedForwardBlock(nn.Module):
     """
@@ -83,8 +83,6 @@ class TransformerTransducerLayer(nn.Module):
         residual = x 
 
         x = self.pe(x)
-        print(f"Input shape: {x.shape}")
-        print(f"Mask shape: {mask.shape if mask is not None else 'None'}")
         x = self.attention(x, x, x, mask)
 
         x = x + residual

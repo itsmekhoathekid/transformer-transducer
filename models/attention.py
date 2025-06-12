@@ -26,10 +26,7 @@ class MultiHeadAttentionBlock(nn.Module):
         # (batch, h, seq_len, d_k) --> (batch, h, seq_len, seq_len)
         attention_scores = (query @ key.transpose(-2, -1)) / math.sqrt(d_k)
         if mask is not None:
-            mask = mask.unsqueeze(1).unsqueeze(2)
-
-            print("mask shape:", mask.shape)
-            print("query shape: ", query.shape)
+            mask = mask.unsqueeze(1).unsqueeze(1)
             # Write a very low value (indicating -inf) to the positions where mask == 0
             attention_scores.masked_fill_(mask == 0, -1e9)
         attention_scores = attention_scores.softmax(dim=-1) # (batch, h, seq_len, seq_len) # Apply softmax

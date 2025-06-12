@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import math
-from utils import TransformerTransducerLayer, calc_data_len, get_mask_from_lens
+from .utils import TransformerTransducerLayer, calc_data_len, get_mask_from_lens
 
 class TransformerTransducerEncoder(nn.Module):
     def __init__(
