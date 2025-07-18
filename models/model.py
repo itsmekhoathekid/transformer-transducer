@@ -7,35 +7,22 @@ from torch.nn import functional as F
 class TransformerTransducer(nn.Module):
     def __init__(
         self,
-        in_features: int,
         n_classes: int,
-        n_layers: int,
+        n_enc_layers: int,
         n_dec_layers: int,
         d_model: int,
         ff_size: int,
         h: int,
         joint_size: int,
-        enc_left_size: int,
-        enc_right_size: int,
-        dec_left_size: int,
-        dec_right_size: int,
         p_dropout: float,
-        stride: int = 1,
-        kernel_size: int = 1,
-        masking_value: int = -1e15,
     ) -> None:
         super().__init__()
         self.encoder = TransformerTransducerEncoder(
-            in_features=in_features,
-            n_layers=n_layers,
+            n_layers=n_enc_layers,
             d_model=d_model,
             ff_size=ff_size,
             h=h,
-            left_size=enc_left_size,
-            right_size=enc_right_size,
-            p_dropout=p_dropout,
-            stride=stride,
-            kernel_size=kernel_size,
+            p_dropout=p_dropout
         )
         self.decoder = TransformerTransducerDecoder(
             vocab_size=n_classes,
@@ -43,9 +30,7 @@ class TransformerTransducer(nn.Module):
             d_model=d_model,
             ff_size=ff_size,
             h=h,
-            left_size=dec_left_size,
-            right_size=dec_right_size,
-            p_dropout=p_dropout,
+            p_dropout=p_dropout
         )
         # self.audio_fc = nn.Linear(in_features=d_model, out_features=joint_size)
         # self.text_fc = nn.Linear(in_features=d_model, out_features=joint_size)

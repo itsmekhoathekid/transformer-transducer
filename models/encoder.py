@@ -1,43 +1,33 @@
 import torch
 import torch.nn as nn
 import math
-from .utils import TransformerTransducerLayer, calc_data_len, get_mask_from_lens
+from .utils import Self_Attention_Block, calc_data_len, get_mask_from_lens, PositionalEncoding
 
 class TransformerTransducerEncoder(nn.Module):
     def __init__(
         self,
-        in_features: int,
         n_layers: int,
         d_model: int,
         ff_size: int,
         h: int,
-        left_size: int,
-        right_size: int,
         p_dropout: float,
-        stride: int = 1,
-        kernel_size: int = 1,
     ):
         super().__init__()
-        self.pre_net = nn.Conv1d(
-            in_channels=in_features,
-            out_channels=d_model,
-            kernel_size=kernel_size,
-            stride=stride,
-        )
+        self.pe = PositionalEncoding(d_model)
+        
 
         self.layers = nn.ModuleList(
             [
-                TransformerTransducerLayer(
+                Self_Attention_Block(
                     d_model=d_model,
                     ff_size=ff_size,
                     h=h,
-                    left_size=left_size,
-                    right_size=right_size,
                     p_dropout=p_dropout,
                 )
                 for _ in range(n_layers)
             ]
         )
+        self.pe = PositionalEncoding(d_model)
 
     def forward(
         self,
@@ -46,18 +36,9 @@ class TransformerTransducerEncoder(nn.Module):
     ) -> torch.Tensor:
         # x is of shape (batch, seq_len, in_features)
         lengths = mask.sum(dim=-1)
-        out = x.transpose(-1, -2)
-        out = self.pre_net(out)
-        out = out.transpose(-1, -2)
+        
+        out = self.pe(x)
 
-        lengths = calc_data_len(
-            result_len=out.shape[1],
-            pad_len=x.shape[1] - lengths,
-            data_len=lengths,
-            kernel_size=self.pre_net.kernel_size[0],
-            stride=self.pre_net.stride[0],
-        )
-        mask = get_mask_from_lens(lengths=lengths, max_len=out.shape[1])
         for layer in self.layers:
             out = layer(out, mask)
         return out, lengths

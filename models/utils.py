@@ -3,6 +3,7 @@ import torch.nn as nn
 import math
 from .attention import MultiHeadAttentionBlock
 
+
 class FeedForwardBlock(nn.Module):
     """
     A feed-forward block with two linear layers and a ReLU activation in between.
@@ -51,43 +52,62 @@ class PositionalEncoding(nn.Module):
         # x is of shape (batch, seq_len, d_model)
         seq_len = x.size(1)
         pe = self.get_pe(seq_len).to(x.device)
+
         x = x + pe
         return x
 
-class TransformerTransducerLayer(nn.Module):
+class LayerNormalization(nn.Module):
+
+    def __init__(self, features: int, eps:float=10**-6) -> None:
+        super().__init__()
+        self.eps = eps
+        self.alpha = nn.Parameter(torch.ones(features)) # alpha is a learnable parameter
+        self.bias = nn.Parameter(torch.zeros(features)) # bias is a learnable parameter
+
+    def forward(self, x):
+        # x: (batch, seq_len, hidden_size)
+         # Keep the dimension for broadcasting
+        mean = x.mean(dim = -1, keepdim = True) # (batch, seq_len, 1)
+        # Keep the dimension for broadcasting
+        std = x.std(dim = -1, keepdim = True) # (batch, seq_len, 1)
+        # eps is to prevent dividing by zero or when std is very small
+        return self.alpha * (x - mean) / (std + self.eps) + self.bias
+
+class ResidualConnection(nn.Module):
+    
+        def __init__(self, features: int, dropout: float) -> None:
+            super().__init__()
+            self.dropout = nn.Dropout(dropout)
+            self.norm = LayerNormalization(features)
+    
+        def forward(self, x, sublayer):
+            return x + self.dropout(sublayer(self.norm(x)))
+
+class Self_Attention_Block(nn.Module):
     def __init__(
         self,
         d_model: int,
         ff_size: int,
         h: int,
-        left_size: int,
-        right_size: int,
         p_dropout: float,
     ) -> None:
         super().__init__()
-        self.left_size = left_size
-        self.right_size = right_size
 
         self.attention = MultiHeadAttentionBlock(d_model, h, p_dropout)
         self.feed_forward = FeedForwardBlock(d_model, ff_size, p_dropout)
-        self.lnom = nn.LayerNorm(d_model)
-        self.pe = PositionalEncoding(d_model)
         self.dropout = nn.Dropout(p_dropout)
-    
+        self.residual_connections = nn.ModuleList(
+            ResidualConnection(d_model, p_dropout) for _ in range(2)
+        )
     def forward(
         self,
         x: torch.Tensor,
         mask: torch.Tensor = None,
     ) -> torch.Tensor:
-        x = self.lnom(x)
-        residual = x 
 
-        x = self.pe(x)
-        x = self.attention(x, x, x, mask)
+        x = self.residual_connections[0](x, lambda x: self.attention(x, x, x, mask))
+        x = self.residual_connections[1](x, lambda x : self.feed_forward(x))
 
-        x = x + residual
-        x = self.feed_forward(x)
-        x = self.dropout(x)
         return x
 
 def calc_data_len(
@@ -151,44 +171,3 @@ def get_mask_from_lens(lengths, max_len: int):
     indices = torch.arange(max_len).to(lengths.device)
     indices = indices.expand(len(lengths), max_len)
     return indices < lengths.unsqueeze(dim=1)
-
-# def test_transformer_transducer_layer():
-#     # Tham số mô hình
-#     d_model = 256
-#     ff_size = 1024
-#     h = 4
-#     left_size = 16
-#     right_size = 16
-#     p_dropout = 0.1
-
-#     # Input giả
-#     batch_size = 2
-#     seq_len = 50
-#     x = torch.randn(batch_size, seq_len, d_model)
-
-#     input_lengths = torch.tensor([50, 40])
-#     mask = get_mask_from_lens(input_lengths, max_len=seq_len)
-
-#     # Tạo lớp
-#     layer = TransformerTransducerLayer(
-#         d_model=d_model,
-#         ff_size=ff_size,
-#         h=h,
-#         left_size=left_size,
-#         right_size=right_size,
-#         p_dropout=p_dropout,
-#     )
-
-#     # Chạy forward
-#     out = layer(x, mask)
-
-#     # In kết quả
-#     print("✅ Input shape:", x.shape)
-#     print("✅ Output shape:", out.shape)
-
-#     # Kiểm tra cơ bản
-#     assert out.shape == x.shape, "Output shape mismatch"
-#     print("✅ Test passed!")
-
-# if __name__ == "__main__":
-#     test_transformer_transducer_layer()

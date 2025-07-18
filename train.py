@@ -12,7 +12,7 @@ import datetime
 import logging
 
 # Cấu hình logger
-log_file = "transformer_transducer_log.txt"
+log_file = "/home/anhkhoa/transformer-transducer/transformer_transducer_log.txt"
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(message)s",
@@ -161,18 +161,13 @@ def main():
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = TransformerTransducer(
-        in_features=config['model']['in_features'],
         n_classes=len(train_dataset.vocab),
-        n_layers=config['model']['n_layers'],
+        n_enc_layers=config['model']['n_enc_layers'],
         n_dec_layers=config['model']['n_dec_layers'],
         d_model=config['model']['d_model'],
         ff_size=config['model']['ff_size'],
         h=config['model']['h'],
         joint_size=config['model']['joint_size'],
-        enc_left_size=config['model']['enc_left_size'],
-        enc_right_size=config['model']['enc_right_size'],
-        dec_left_size=config['model']['dec_left_size'],
-        dec_right_size=config['model']['dec_right_size'],
         p_dropout=config['model']['p_dropout']
     ).to(device)
 
