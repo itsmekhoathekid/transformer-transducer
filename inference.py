@@ -22,22 +22,18 @@ def load_config(config_path: str) -> dict:
 def load_model(config: dict, vocab_len: int, device: torch.device) -> TransformerTransducer:
     checkpoint_path = os.path.join(
         config['training']['save_path'],
-        f"transformer_transducer_epoch_23"
+        f"transformer_transducer_epoch_2"
     )
     print(f"Loading checkpoint from: {checkpoint_path}")
     model = TransformerTransducer(
         in_features=config['model']['in_features'],
         n_classes=vocab_len,
-        n_layers=config['model']['n_layers'],
+        n_enc_layers=config['model']['n_enc_layers'],
         n_dec_layers=config['model']['n_dec_layers'],
         d_model=config['model']['d_model'],
         ff_size=config['model']['ff_size'],
         h=config['model']['h'],
         joint_size=config['model']['joint_size'],
-        enc_left_size=config['model']['enc_left_size'],
-        enc_right_size=config['model']['enc_right_size'],
-        dec_left_size=config['model']['dec_left_size'],
-        dec_right_size=config['model']['dec_right_size'],
         p_dropout=config['model']['p_dropout']
     ).to(device)
     checkpoint = torch.load(checkpoint_path, map_location=device)
@@ -70,19 +66,15 @@ class TransducerPredictor:
         pred_tokens = []
 
         targets = encoder_outputs.new_tensor([[self.sos]], dtype=torch.long).to(self.device)
-        enc_proj = self.model.audio_fc(encoder_outputs)
-
+        
         
         for t in range(min(T, max_length)):
             text_mask = torch.ones_like(targets, dtype=torch.bool, device=self.device)
             
             decoder_output, _ = self.model.decoder(targets, text_mask)               # (B, U, D)
-            dec_proj = self.model.text_fc(decoder_output)[:, -1:, :]            # (B, 1, D)
-            enc_step = enc_proj[:, t, :]                                     # (B, 1, D)
+            dec_proj = decoder_output[:, -1, :]            # (B, 1, D)
+            enc_step = encoder_outputs[:, t, :]                                     # (B, 1, D)
 
-            
-            
-            # print(dec_proj)
             logits = self.model._join(enc_step, dec_proj)                       # (B, 1, 1, V)
             logits = F.softmax(logits.squeeze(1).squeeze(1), dim=-1)   
             
@@ -98,7 +90,6 @@ class TransducerPredictor:
                 pred_tokens.append(token_id)
                 targets = torch.cat([targets, top_token.unsqueeze(1)], dim=1)
 
-        print(targets)
         tokens = [self.idx2token.get(t, "") for t in pred_tokens]
         return " ".join(tokens)
 
@@ -116,7 +107,7 @@ def main():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     test_dataset = Speech2Text(
-        json_path=config['training']['train_path'],
+        json_path=config['training']['test_path'],
         vocab_path=config['training']['vocab_path']
     )
     test_loader = torch.utils.data.DataLoader(
@@ -155,7 +146,6 @@ def main():
         j+=1
         if j == 5:
             break
-        raise
     
    
 

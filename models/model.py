@@ -103,8 +103,7 @@ class TransformerTransducer(nn.Module):
         speech, speech_len = self.encoder(speech, speech_mask)
 
         text, text_len = self.decoder(text_padded, mask_padded)
-        # speech = self.audio_fc(speech)
-        # text = self.text_fc(text)
+
         result = self._join(encoder_out=speech, deocder_out=text)
         speech_len, text_len = (
             speech_len.to(speech.device),
