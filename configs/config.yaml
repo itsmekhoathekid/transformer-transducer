@@ -7,6 +7,7 @@ training:
   test_path : "/home/anhkhoa/transformer_transducer_speeQ/data/dev.json"
   vocab_path : "/home/anhkhoa/transformer_transducer_speeQ/data/vocab.json"
   reload: False
+  log_file: "/home/anhkhoa/transformer-transducer/transformer_transducer_log.txt"
   
 
 
@@ -18,11 +19,11 @@ optim:
 
 
 model:
-   in_features: 512
+   in_features: 40
    n_enc_layers: 2
    n_dec_layers: 2
    d_model: 512
-   ff_size: 2048
+   ff_size: 1024
    h: 8
    joint_size: 1024
    p_dropout: 0.1

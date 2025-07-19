@@ -7,6 +7,7 @@ from torch.nn import functional as F
 class TransformerTransducer(nn.Module):
     def __init__(
         self,
+        in_features: int,
         n_classes: int,
         n_enc_layers: int,
         n_dec_layers: int,
@@ -18,6 +19,7 @@ class TransformerTransducer(nn.Module):
     ) -> None:
         super().__init__()
         self.encoder = TransformerTransducerEncoder(
+            in_features=in_features,
             n_layers=n_enc_layers,
             d_model=d_model,
             ff_size=ff_size,

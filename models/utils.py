@@ -171,3 +171,14 @@ def get_mask_from_lens(lengths, max_len: int):
     indices = torch.arange(max_len).to(lengths.device)
     indices = indices.expand(len(lengths), max_len)
     return indices < lengths.unsqueeze(dim=1)
+
+import logging
+def logg(log_file):
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s - %(message)s",
+        handlers=[
+            logging.FileHandler(log_file),
+            logging.StreamHandler()  # vẫn in ra màn hình
+        ]
+    )

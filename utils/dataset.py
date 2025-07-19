@@ -68,25 +68,19 @@ class Speech2Text(Dataset):
         return len(self.data)
 
     def get_fbank(self, waveform, sample_rate=16000):
-        mel = self.mel_extractor(waveform.unsqueeze(0))  # [1, 128, T]
-        mel_db = self.db_transform(mel)  # [1, 128, T]
-        mel_db = mel_db.squeeze(0).transpose(0, 1)  # [T, 128]
-    
-        # === Stack 4 frames ===
-        if mel_db.shape[0] < 4:
-            mel_db = torch.cat([mel_db] * (4 // mel_db.shape[0] + 1), dim=0)
-        stacked = mel_db.unfold(0, 4, 1)  # [T-3, 4, 128]
-        stacked = stacked.reshape(-1, 4 * 128)  # [T-3, 512]
-    
-        # === Subsample every 3 frames ===
-        stacked = stacked[::3]  # stride = 30ms
-    
-        # === Normalize toàn bộ stacked vector ===
-        mean = stacked.mean(dim=0, keepdim=True)
-        std = stacked.std(dim=0, keepdim=True)
-        stacked = (stacked - mean) / (std + 1e-5)  # [T, 512]
-    
-        return stacked  # [T', 512]
+        mel_extractor = T.MelSpectrogram(
+            sample_rate=sample_rate,
+            n_fft=512,
+            win_length=int(0.032 * sample_rate),
+            hop_length=int(0.010 * sample_rate),
+            n_mels=40,  
+            power=2.0
+        )
+
+        log_mel = mel_extractor(waveform.unsqueeze(0))
+        log_mel = torchaudio.functional.amplitude_to_DB(log_mel, multiplier=10.0, amin=1e-10, db_multiplier=0)
+
+        return log_mel.squeeze(0).transpose(0, 1)  # [T, 80]
 
 
     def extract_from_path(self, wave_path):

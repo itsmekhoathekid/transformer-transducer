@@ -6,6 +6,7 @@ from .utils import Self_Attention_Block, calc_data_len, get_mask_from_lens, Posi
 class TransformerTransducerEncoder(nn.Module):
     def __init__(
         self,
+        in_features: int,
         n_layers: int,
         d_model: int,
         ff_size: int,
@@ -13,6 +14,7 @@ class TransformerTransducerEncoder(nn.Module):
         p_dropout: float,
     ):
         super().__init__()
+        self.linear = nn.Linear(in_features=in_features, out_features=d_model)
         self.pe = PositionalEncoding(d_model)
         
 
@@ -27,7 +29,6 @@ class TransformerTransducerEncoder(nn.Module):
                 for _ in range(n_layers)
             ]
         )
-        self.pe = PositionalEncoding(d_model)
 
     def forward(
         self,
@@ -36,7 +37,7 @@ class TransformerTransducerEncoder(nn.Module):
     ) -> torch.Tensor:
         # x is of shape (batch, seq_len, in_features)
         lengths = mask.sum(dim=-1)
-        
+        x = self.linear(x)  # (batch, seq_len, d_model)
         out = self.pe(x)
 
         for layer in self.layers:

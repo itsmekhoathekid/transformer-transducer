@@ -1,26 +1,20 @@
 import torch
-from utils.dataset import Speech2Text, speech_collate_fn
-from models.model import TransformerTransducer
+from utils import (
+    Speech2Text, speech_collate_fn
+)
 from tqdm import tqdm
-from models.loss import RNNTLoss
 import argparse
 import yaml
 import os 
-from models.optim import Optimizer
+from models import (
+    TransformerTransducer,
+    Optimizer,
+    logg,
+    RNNTLoss
+)
 from torch.optim.lr_scheduler import ReduceLROnPlateau
-import datetime
 import logging
 
-# Cấu hình logger
-log_file = "/home/anhkhoa/transformer-transducer/transformer_transducer_log.txt"
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(message)s",
-    handlers=[
-        logging.FileHandler(log_file),
-        logging.StreamHandler()  # vẫn in ra màn hình
-    ]
-)
 
 def reload_model(model, optimizer, checkpoint_path):
     """
@@ -132,7 +126,7 @@ def main():
     config = load_config(args.config)
     training_cfg = config['training']
     # optimizer_cfg = config['optimizer']
-
+    logg(training_cfg['log_file'])
 
     # ==== Load Dataset ====
     train_dataset = Speech2Text(
@@ -161,6 +155,7 @@ def main():
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = TransformerTransducer(
+        in_features=config['model']['in_features'],
         n_classes=len(train_dataset.vocab),
         n_enc_layers=config['model']['n_enc_layers'],
         n_dec_layers=config['model']['n_dec_layers'],
