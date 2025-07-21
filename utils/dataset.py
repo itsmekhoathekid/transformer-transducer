@@ -53,9 +53,9 @@ class Speech2Text(Dataset):
         self.mel_extractor = T.MelSpectrogram(
             sample_rate=16000,
             n_fft=512,
-            win_length=int(0.032 * 16000),  # 32ms
+            win_length=int(0.025 * 16000),  # 32ms
             hop_length=int(0.010 * 16000),  # 10ms hop
-            n_mels=128,
+            n_mels=80,
             power=2.0
         )
         self.db_transform = T.AmplitudeToDB(top_db=80)
@@ -73,7 +73,7 @@ class Speech2Text(Dataset):
             n_fft=512,
             win_length=int(0.032 * sample_rate),
             hop_length=int(0.010 * sample_rate),
-            n_mels=40,  
+            n_mels=80,  
             power=2.0
         )
 
@@ -92,7 +92,7 @@ class Speech2Text(Dataset):
         current_item = self.data[idx]
         wav_path = current_item["wav_path"]
         encoded_text = torch.tensor(current_item["encoded_text"] + [self.eos_token], dtype=torch.long)
-        decoder_input = torch.tensor([self.sos_token] + current_item["encoded_text"], dtype=torch.long)
+        decoder_input = torch.tensor([self.sos_token] + current_item["encoded_text"] + [self.eos_token], dtype=torch.long)
         fbank = self.extract_from_path(wav_path).float()  # [T, 512]
 
         return {
@@ -110,6 +110,11 @@ def calculate_mask(lengths, max_len):
     mask = torch.arange(max_len, device=lengths.device)[None, :] < lengths[:, None]
     return mask
 
+def causal_mask(batch_size, size):
+    """Tạo mask cho decoder để tránh nhìn thấy tương lai"""
+    mask = torch.tril(torch.ones(size, size)).bool()
+    return mask.unsqueeze(0).expand(batch_size, -1, -1)  # [B, T, T]
+
 def speech_collate_fn(batch):
     decoder_outputs = [torch.tensor(item["decoder_input"]) for item in batch]
     texts = [item["text"] for item in batch]
@@ -121,9 +126,9 @@ def speech_collate_fn(batch):
     padded_texts = pad_sequence(texts, batch_first=True, padding_value=0)       # [B, T_text]
     padded_fbanks = pad_sequence(fbanks, batch_first=True, padding_value=0.0)   # [B, T_audio, 80]
 
-    speech_mask=calculate_mask(fbank_lens, padded_fbanks.size(1))      # [B, T]
-    text_mask=calculate_mask(text_lens, padded_texts.size(1))
-
+    speech_mask=calculate_mask(fbank_lens, padded_fbanks.size(1)).unsqueeze(1).unsqueeze(1)      # [B, T]
+    text_mask= calculate_mask(text_lens, padded_texts.size(1) + 1).unsqueeze(1) & causal_mask(padded_texts.size(0), padded_texts.size(1) + 1)
+    text_mask = text_mask.unsqueeze(1)  
     return {
         "decoder_input": padded_decoder_inputs,
         "text": padded_texts,

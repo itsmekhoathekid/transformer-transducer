@@ -86,23 +86,12 @@ class TransformerTransducer(nn.Module):
             is the predictions of shape [B, M, N, C], the last two tensor are
             the speech and text length of shape [B]
         """
-        B, U = text.shape
-        
-        # Nếu muốn pad 0 vào cuối 
-        pad_col = torch.full((B, 1),
-                             fill_value=0,
-                             dtype=text.dtype,
-                             device=text.device)
-        text_padded = torch.cat([text, pad_col], dim=1)
-        pad_mask = torch.zeros((B, 1),
-                               dtype=text_mask.dtype,
-                               device=text_mask.device)
-        mask_padded = torch.cat([text_mask, pad_mask], dim=1)
 
+        
 
         speech, speech_len = self.encoder(speech, speech_mask)
 
-        text, text_len = self.decoder(text_padded, mask_padded)
+        text, text_len = self.decoder(text, text_mask)
 
         result = self._join(encoder_out=speech, deocder_out=text)
         speech_len, text_len = (

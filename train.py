@@ -53,7 +53,7 @@ def train_one_epoch(model, dataloader, optimizer, criterion, device):
 
         optimizer.zero_grad()
 
-        output, fbank_len, text_len = model(
+        output, _ , _ = model(
             speech=speech,
             speech_mask=speech_mask,
             text=decoder_input,
@@ -95,7 +95,7 @@ def evaluate(model, dataloader, criterion, device):
 
 
 
-            output, fbank_len, text_len = model(
+            output, _ , _ = model(
                 speech=speech,
                 speech_mask=speech_mask,
                 text=decoder_input,
