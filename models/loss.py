@@ -14,7 +14,7 @@ class RNNTLoss(torch.nn.Module):
         # text_len: [B]
 
         
-
+        
         loss = rnnt_loss(logits, targets[:, :].int(), fbank_len.int(), text_len.int() , blank=self.blank)
         
         if self.reduction == "mean":

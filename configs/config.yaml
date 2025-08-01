@@ -20,8 +20,8 @@ optim:
 
 model:
    in_features: 80
-   n_enc_layers: 1
-   n_dec_layers: 1
+   n_enc_layers: 2
+   n_dec_layers: 2
    d_model: 64
    ff_size: 128
    h: 4
