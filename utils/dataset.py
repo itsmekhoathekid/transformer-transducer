@@ -54,7 +54,7 @@ class Speech2Text(Dataset):
 
         self.fbank = Fbank(
             sample_rate=16000,
-            n_mels=80,
+            n_mels=40,
             n_fft=512,
             win_length=25,
         )

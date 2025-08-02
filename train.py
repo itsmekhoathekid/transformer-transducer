@@ -14,6 +14,8 @@ from models import (
 )
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 import logging
+from speechbrain.nnet.schedulers import NoamScheduler
+from torch import nn
 
 
 def reload_model(model, optimizer, checkpoint_path):
@@ -36,7 +38,7 @@ def reload_model(model, optimizer, checkpoint_path):
     return past_epoch+1, model, optimizer
 
 
-def train_one_epoch(model, dataloader, optimizer, criterion, device):
+def train_one_epoch(model, dataloader, optimizer, criterion, device, scheduler):
     model.train()
     total_loss = 0.0
 
@@ -63,7 +65,11 @@ def train_one_epoch(model, dataloader, optimizer, criterion, device):
         # Bỏ <s> ở đầu nếu có
         loss = criterion(output, target_text, fbank_len, text_len)
         loss.backward()
+
+        nn.utils.clip_grad_norm_(model.parameters(), max_norm=200.0)
+
         optimizer.step()
+        curr_lr, _ = scheduler(optimizer.optimizer)
 
         total_loss += loss.item()
 
@@ -72,7 +78,7 @@ def train_one_epoch(model, dataloader, optimizer, criterion, device):
 
     avg_loss = total_loss / len(dataloader)
     logging.info(f"Average training loss: {avg_loss:.4f}")
-    return avg_loss
+    return avg_loss, curr_lr
 
 
 from torchaudio.functional import rnnt_loss
@@ -178,13 +184,24 @@ def main():
     optimizer = Optimizer(model.parameters(), config['optim'])
 
     # ===Scheduler===
-    scheduler = ReduceLROnPlateau(
-        optimizer.optimizer,  # because you're using a wrapper class
-        mode='min',
-        factor=0.5,
-        patience=2,
-        # verbose=True
-    )
+    # scheduler = ReduceLROnPlateau(
+    #     optimizer.optimizer,  # because you're using a wrapper class
+    #     mode='min',
+    #     factor=0.5,
+    #     patience=2,
+    #     # verbose=True
+    # )
+    if not config['training']['reload']:
+        scheduler = NoamScheduler(
+            n_warmup_steps=config['scheduler']['n_warmup_steps'],
+            lr_initial=config['scheduler']['lr_initial']
+        )
+    else:
+        scheduler = NoamScheduler(
+            n_warmup_steps=config['scheduler']['n_warmup_steps'],
+            lr_initial=config['scheduler']['lr_initial']
+        )
+        scheduler.load(config['training']['save_path'] + '/scheduler.ckpt')
 
     # === Huấn luyện ===
 
@@ -196,10 +213,10 @@ def main():
 
     
     for epoch in range(start_epoch, num_epochs + 1):
-        train_loss = train_one_epoch(model, train_loader, optimizer, criterion, device)
+        train_loss, curr_lr = train_one_epoch(model, train_loader, optimizer, criterion, device, scheduler)
         val_loss = evaluate(model,  dev_loader, criterion, device)
 
-        logging.info(f"Epoch {epoch}: Train Loss = {train_loss:.4f}, Val Loss = {val_loss:.4f}")
+        logging.info(f"Epoch {epoch}: Train Loss = {train_loss:.4f}, Val Loss = {val_loss:.4f}, Lr = {curr_lr:.6f}")
         # Save model checkpoint
 
         model_filename = os.path.join(
@@ -213,14 +230,7 @@ def main():
             'optimizer_state_dict': optimizer.state_dict(),
         }, model_filename)
 
-        # Step scheduler with validation loss
-        scheduler.step(val_loss)
-
-        # Early stopping nếu lr quá nhỏ
-        current_lr = optimizer.optimizer.param_groups[0]["lr"]
-        if current_lr < 1e-6:
-            logging.info('Learning rate quá thấp. Kết thúc training.')
-            break
+        scheduler.save(config['training']['save_path'] + '/scheduler.ckpt')
 
 
 if __name__ == "__main__":
