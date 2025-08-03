@@ -13,13 +13,13 @@ training:
 
 optim:
   type: adam
-  lr: 0.0001
+  lr: 0.0005
   weight_decay: 0.0001
   decay_rate: 0.5
 
 
 model:
-   in_features: 40
+   in_features: 320
    n_enc_layers: 3
    n_dec_layers: 2
    d_model: 512
@@ -34,4 +34,7 @@ rnnt_loss:
   blank: 4
   reduction: "mean" 
 
-
+scheduler:
+  # type: "LROPT" # Options: [noam, LROPT]
+  lr_initial: 0.0005
+  n_warmup_steps: 25000

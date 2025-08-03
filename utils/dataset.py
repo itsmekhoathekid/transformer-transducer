@@ -123,7 +123,7 @@ def speech_collate_fn(batch):
     padded_texts = pad_sequence(texts, batch_first=True, padding_value=0)       # [B, T_text]
     padded_fbanks = pad_sequence(fbanks, batch_first=True, padding_value=0.0)   # [B, T_audio, 80]
 
-    speech_mask=calculate_mask(fbank_lens, padded_fbanks.size(1)).unsqueeze(1).unsqueeze(1)      # [B, T]
+    speech_mask=calculate_mask(fbank_lens, padded_fbanks.size(1))    # [B, T]
     text_mask= calculate_mask(text_lens, padded_texts.size(1) + 1).unsqueeze(1) & causal_mask(padded_texts.size(0), padded_texts.size(1) + 1)
     text_mask = text_mask.unsqueeze(1)  
     return {

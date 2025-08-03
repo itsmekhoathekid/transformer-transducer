@@ -57,7 +57,6 @@ class TransformerTransducer(nn.Module):
         output = self.tanh(output)
         output = self.fc2(output)
         
-        output = F.log_softmax(output, dim=-1)
         return output
     
     def forward(
