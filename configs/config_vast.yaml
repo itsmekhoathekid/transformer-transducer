@@ -19,7 +19,7 @@ optim:
 
 
 model:
-   in_features: 320
+   in_features: 40
    n_enc_layers: 3
    n_dec_layers: 2
    d_model: 512
