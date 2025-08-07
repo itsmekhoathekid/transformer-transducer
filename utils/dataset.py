@@ -51,6 +51,15 @@ class Speech2Text(Dataset):
         self.pad_token = self.vocab.get_pad_token()
         self.unk_token = self.vocab.get_unk_token()
         self.apply_spec_augment = apply_spec_augment
+        
+        freq_width = int(0.15 * config['fbank']['n_mels'])  # Tính toán độ rộng tần số
+
+        self.augment = nn.Sequential(
+            torchaudio.transforms.FrequencyMasking(freq_mask_param=freq_width),
+            torchaudio.transforms.FrequencyMasking(freq_mask_param=freq_width),  # 2 mask
+            torchaudio.transforms.TimeMasking(time_mask_param=config['fbank']['n_mels'], p=1.0),
+            torchaudio.transforms.TimeMasking(time_mask_param=config['fbank']['n_mels'], p=1.0)         # 2 mask
+        )
 
         self.fbank = Fbank(
             sample_rate=config['fbank']['sample_rate'],
@@ -63,22 +72,10 @@ class Speech2Text(Dataset):
     def __len__(self):
         return len(self.data)
 
-    def get_fbank(self, waveform, sample_rate=16000):
-
-        # mel_extractor = T.MelSpectrogram(
-        #     sample_rate=sample_rate,
-        #     n_fft=512,
-        #     win_length=int(0.025 * sample_rate),
-        #     hop_length=int(0.010 * sample_rate),
-        #     n_mels=80,  
-        #     power=2.0
-        # )
-
-        # log_mel = mel_extractor(waveform.unsqueeze(0))
-        # log_mel = torchaudio.functional.amplitude_to_DB(log_mel, multiplier=10.0, amin=1e-10, db_multiplier=0)
-
-        # return log_mel.squeeze(0).transpose(0, 1)  # [T, 80]
+    def get_fbank(self, waveform):
         fbank = self.fbank(waveform)
+        if self.apply_spec_augment:
+            fbank = self.augment(fbank)
         return fbank.squeeze(0)  # [T, 80]
 
 

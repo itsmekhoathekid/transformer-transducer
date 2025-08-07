@@ -140,6 +140,7 @@ def main():
         json_path=training_cfg['train_path'],
         vocab_path=training_cfg['vocab_path'],
         config = config,
+        apply_spec_augment = True
     )
 
     train_loader = torch.utils.data.DataLoader(
