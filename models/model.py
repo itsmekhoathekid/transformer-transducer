@@ -34,28 +34,20 @@ class TransformerTransducer(nn.Module):
             h=h,
             p_dropout=p_dropout
         )
-        # self.audio_fc = nn.Linear(in_features=d_model, out_features=joint_size)
-        # self.text_fc = nn.Linear(in_features=d_model, out_features=joint_size)
-        self.fc1 = nn.Linear(in_features = joint_size, out_features = d_model)
-        self.fc2 = nn.Linear(in_features = d_model, out_features = n_classes)
+        self.audio_fc = nn.Linear(in_features=d_model, out_features=joint_size)
+        self.text_fc = nn.Linear(in_features=d_model, out_features=joint_size)
+        self.projected = nn.Linear(in_features=joint_size, out_features=n_classes)
         self.tanh = nn.Tanh()
         # self.join_net = nn.Linear(in_features=joint_size, out_features=n_classes)
 
     def _join(self, encoder_out: Tensor, deocder_out: Tensor, training=True) -> Tensor:
         if encoder_out.dim() == 3 or deocder_out.dim() == 3:
-            seq_lens = encoder_out.size(1)
-            target_lens = deocder_out.size(1)
-
-            encoder_out = encoder_out.unsqueeze(2)
+            encoder_out = encoder_out.unsqueeze(-2)
             deocder_out = deocder_out.unsqueeze(1)
 
-            encoder_out = encoder_out.repeat(1, 1, target_lens, 1)
-            deocder_out = deocder_out.repeat(1, seq_lens, 1, 1)
-
-        output = torch.cat((encoder_out, deocder_out), dim=-1)
-        output = self.fc1(output)
-        output = self.tanh(output)
-        output = self.fc2(output)
+        
+        output = self.tanh(encoder_out + deocder_out)
+        output = self.projected(output)
         
         return output
     
@@ -92,7 +84,10 @@ class TransformerTransducer(nn.Module):
 
         text, text_len = self.decoder(text, text_mask)
 
-        result = self._join(encoder_out=speech, deocder_out=text)
+        audio_out = self.audio_fc(speech)
+        text_out = self.text_fc(text)
+
+        result = self._join(encoder_out=audio_out, deocder_out=text_out)
         speech_len, text_len = (
             speech_len.to(speech.device),
             text_len.to(speech.device),

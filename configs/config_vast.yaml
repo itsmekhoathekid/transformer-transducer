@@ -8,7 +8,13 @@ training:
   vocab_path : "workspace/dataset/vocab_w2i.json"
   reload: False
   log_file: "workspace/transformer-transducer/transformer_transducer_log.txt"
-  
+
+fbank:
+  n_mels: 80
+  n_fft: 512
+  win_length: 25
+  hop_length: 10
+  sample_rate: 16000
 
 
 optim:
@@ -19,7 +25,7 @@ optim:
 
 
 model:
-   in_features: 40
+   in_features: 80
    n_enc_layers: 3
    n_dec_layers: 2
    d_model: 512

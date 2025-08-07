@@ -17,9 +17,15 @@ optim:
   weight_decay: 0.0001
   decay_rate: 0.5
 
+fbank:
+  n_mels: 80
+  n_fft: 512
+  win_length: 25
+  hop_length: 10
+  sample_rate: 16000
 
 model:
-   in_features: 40
+   in_features: 80
    n_enc_layers: 2
    n_dec_layers: 2
    d_model: 64

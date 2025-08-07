@@ -26,7 +26,8 @@ def reload_model(model, optimizer, checkpoint_path):
     path_list = [path for path in os.listdir(checkpoint_path)]
     if len(path_list) > 0:
         for path in path_list:
-            past_epoch = max(int(path.split("_")[-1]), past_epoch)
+            if ".ckpt" not in path:
+                past_epoch = max(int(path.split("_")[-1]), past_epoch)
         
         load_path = os.path.join(checkpoint_path, f"transformer_transducer_epoch_{past_epoch}")
         checkpoint = torch.load(load_path)
@@ -138,6 +139,7 @@ def main():
     train_dataset = Speech2Text(
         json_path=training_cfg['train_path'],
         vocab_path=training_cfg['vocab_path'],
+        config = config,
     )
 
     train_loader = torch.utils.data.DataLoader(
@@ -149,7 +151,8 @@ def main():
 
     dev_dataset = Speech2Text(
         json_path=training_cfg['dev_path'],
-        vocab_path=training_cfg['vocab_path']
+        vocab_path=training_cfg['vocab_path'],
+        config = config,
     )
 
     dev_loader = torch.utils.data.DataLoader(
@@ -197,11 +200,7 @@ def main():
             lr_initial=config['scheduler']['lr_initial']
         )
     else:
-        scheduler = NoamScheduler(
-            n_warmup_steps=config['scheduler']['n_warmup_steps'],
-            lr_initial=config['scheduler']['lr_initial']
-        )
-        scheduler.load(config['training']['save_path'] + '/scheduler.ckpt')
+        scheduler = NoamScheduler.load(config['training']['save_path'] + '/scheduler.ckpt')
 
     # === Huấn luyện ===
 

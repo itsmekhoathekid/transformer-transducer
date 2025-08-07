@@ -42,7 +42,7 @@ class Vocab:
 
 
 class Speech2Text(Dataset):
-    def __init__(self, json_path, vocab_path, apply_spec_augment=True):
+    def __init__(self, json_path, vocab_path, config, apply_spec_augment=False):
         super().__init__()
         self.data = load_json(json_path)
         self.vocab = Vocab(vocab_path)
@@ -53,10 +53,11 @@ class Speech2Text(Dataset):
         self.apply_spec_augment = apply_spec_augment
 
         self.fbank = Fbank(
-            sample_rate=16000,
-            n_mels=40,
-            n_fft=512,
-            win_length=25,
+            sample_rate=config['fbank']['sample_rate'],
+            n_mels=config['fbank']['n_mels'],
+            n_fft=config['fbank']['n_fft'],
+            win_length=config['fbank']['win_length'],
+            hop_length=config['fbank']['hop_length'],
         )
 
     def __len__(self):
@@ -135,3 +136,14 @@ def speech_collate_fn(batch):
         "fbank": padded_fbanks,
         "fbank_mask": speech_mask
     }
+
+# self.augment = torch.nn.Sequential(
+#     torchaudio.transforms.TimeMasking(40),
+#     torchaudio.transforms.FrequencyMasking(30)
+# )
+
+# def get_fbank(...):
+#     fbank = self.fbank(waveform)
+#     if self.training:
+#         fbank = self.augment(fbank)
+#     return fbank.squeeze(0)
