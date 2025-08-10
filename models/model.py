@@ -24,7 +24,8 @@ class TransformerTransducer(nn.Module):
             d_model=d_model,
             ff_size=ff_size,
             h=h,
-            p_dropout=p_dropout
+            p_dropout=p_dropout,
+            joint_size=joint_size
         )
         self.decoder = TransformerTransducerDecoder(
             vocab_size=n_classes,
@@ -32,30 +33,24 @@ class TransformerTransducer(nn.Module):
             d_model=d_model,
             ff_size=ff_size,
             h=h,
-            p_dropout=p_dropout
+            p_dropout=p_dropout,
+            joint_size=joint_size
         )
-        # self.audio_fc = nn.Linear(in_features=d_model, out_features=joint_size)
-        # self.text_fc = nn.Linear(in_features=d_model, out_features=joint_size)
-        self.fc1 = nn.Linear(in_features = joint_size, out_features = d_model)
-        self.fc2 = nn.Linear(in_features = d_model, out_features = n_classes)
+        self.audio_fc = nn.Linear(in_features=d_model, out_features=joint_size)
+        self.text_fc = nn.Linear(in_features=d_model, out_features=joint_size)
+        # self.fc1 = nn.Linear(in_features = joint_size, out_features = d_model)
+        # self.fc2 = nn.Linear(in_features = d_model, out_features = n_classes)
         self.tanh = nn.Tanh()
-        # self.join_net = nn.Linear(in_features=joint_size, out_features=n_classes)
+        self.join_net = nn.Linear(in_features=joint_size, out_features=n_classes)
 
     def _join(self, encoder_out: Tensor, deocder_out: Tensor, training=True) -> Tensor:
         if encoder_out.dim() == 3 or deocder_out.dim() == 3:
-            seq_lens = encoder_out.size(1)
-            target_lens = deocder_out.size(1)
-
-            encoder_out = encoder_out.unsqueeze(2)
+            encoder_out = encoder_out.unsqueeze(-2)
             deocder_out = deocder_out.unsqueeze(1)
 
-            encoder_out = encoder_out.repeat(1, 1, target_lens, 1)
-            deocder_out = deocder_out.repeat(1, seq_lens, 1, 1)
-
-        output = torch.cat((encoder_out, deocder_out), dim=-1)
-        output = self.fc1(output)
+        output = encoder_out + deocder_out
         output = self.tanh(output)
-        output = self.fc2(output)
+        output = self.join_net(output)
         
         return output
     
@@ -91,6 +86,9 @@ class TransformerTransducer(nn.Module):
         speech, speech_len = self.encoder(speech, speech_mask)
 
         text, text_len = self.decoder(text, text_mask)
+
+        speech = self.audio_fc(speech)
+        text = self.text_fc(text)
 
         result = self._join(encoder_out=speech, deocder_out=text)
         speech_len, text_len = (

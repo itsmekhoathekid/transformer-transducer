@@ -13,6 +13,7 @@ class TransformerTransducerEncoder(nn.Module):
         ff_size: int,
         h: int,
         p_dropout: float,
+        joint_size: int
     ):
         super().__init__()
         self.linear = nn.Linear(in_features=in_features, out_features=d_model)
@@ -26,6 +27,7 @@ class TransformerTransducerEncoder(nn.Module):
                     ff_size=ff_size,
                     h=h,
                     p_dropout=p_dropout,
+                    d_ff2= joint_size
                 )
                 for _ in range(n_layers)
             ]
