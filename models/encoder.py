@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import math
-from .utils import Self_Attention_Block, calc_data_len, get_mask_from_lens, PositionalEncoding, ConvolutionFrontEnd
+from .utils import Self_Attention_Block, calc_data_len, get_mask_from_lens, PositionalEncoding, ConvolutionFrontEnd, PositionalEmbedding
 
 
 class TransformerTransducerEncoder(nn.Module):
@@ -16,7 +16,7 @@ class TransformerTransducerEncoder(nn.Module):
     ):
         super().__init__()
         self.linear = nn.Linear(in_features=in_features, out_features=d_model)
-        self.pe = PositionalEncoding(d_model)
+        self.pe = PositionalEmbedding(d_model)
         
 
         self.layers = nn.ModuleList(

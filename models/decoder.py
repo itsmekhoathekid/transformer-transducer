@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import math
-from .utils import Self_Attention_Block, PositionalEncoding
+from .utils import Self_Attention_Block, PositionalEncoding, PositionalEmbedding
 
 
 
@@ -17,7 +17,7 @@ class TransformerTransducerDecoder(nn.Module):
     ) -> None:
         super().__init__()
         self.emb = nn.Embedding(num_embeddings=vocab_size, embedding_dim=d_model)
-        self.pe = PositionalEncoding(d_model)
+        self.pe = PositionalEmbedding(d_model)
         self.dec_layers = nn.ModuleList(
             [
                 Self_Attention_Block(
