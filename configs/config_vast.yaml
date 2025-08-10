@@ -18,10 +18,12 @@ fbank:
 
 
 optim:
-  type: adam
-  lr: 0.0005
+  type: sgd 
+  lr: 0.0003
   weight_decay: 0.0001
+  momentum: 0.9
   decay_rate: 0.5
+  nesterov: None
 
 
 model:
@@ -37,10 +39,10 @@ model:
 
 
 rnnt_loss:
-  blank: 4
+  blank: 0
   reduction: "mean" 
 
 scheduler:
   # type: "LROPT" # Options: [noam, LROPT]
-  lr_initial: 0.0005
+  lr_initial: 0.0003
   n_warmup_steps: 25000

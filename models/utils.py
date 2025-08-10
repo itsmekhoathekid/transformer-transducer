@@ -45,6 +45,25 @@ class PositionalEncoding(nn.Module):
         x = x + pe
         return x
 
+class PositionalEmbedding(nn.Module):
+    def __init__(self, d_model):
+        super(PositionalEmbedding, self).__init__()
+
+        self.d_model = d_model
+
+    def get_pe(self, seq_len):
+        inv_freq = 1 / (10000 ** (torch.arange(0.0, self.d_model, 2.0) / self.d_model))
+        pos_seq = torch.arange(0, seq_len, dtype=torch.float).unsqueeze(1) 
+        sinusoid_inp = torch.ger(pos_seq, inv_freq)
+        pos_emb = torch.cat([sinusoid_inp.sin(), sinusoid_inp.cos()], dim=-1)
+        return pos_emb.unsqueeze(0)  # (1, seq_len, d_model)
+    
+    def forward(self, x):
+        seq_len = x.size(1)
+        pe = self.get_pe(seq_len).to(x.device)
+        x = x + pe
+        return x
+
 class LayerNormalization(nn.Module):
 
     def __init__(self, features: int, eps:float=10**-6) -> None:
@@ -68,9 +87,10 @@ class ResidualConnection(nn.Module):
             super().__init__()
             self.dropout = nn.Dropout(dropout)
             self.norm = LayerNormalization(features)
+            self.norm2 = LayerNormalization(features)
     
         def forward(self, x, sublayer):
-            return self.norm(x + self.dropout(sublayer(x)))
+            return self.norm(x) + self.dropout(sublayer(self.norm2(x)))
 
 class Self_Attention_Block(nn.Module):
     def __init__(
@@ -88,6 +108,7 @@ class Self_Attention_Block(nn.Module):
         self.residual_connections = nn.ModuleList(
             ResidualConnection(d_model, p_dropout) for _ in range(2)
         )
+        self.layer_norm = LayerNormalization(d_model)
     def forward(
         self,
         x: torch.Tensor,

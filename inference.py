@@ -108,7 +108,8 @@ def main():
 
     test_dataset = Speech2Text(
         json_path=config['training']['test_path'],
-        vocab_path=config['training']['vocab_path']
+        vocab_path=config['training']['vocab_path'],
+        config = config
     )
     test_loader = torch.utils.data.DataLoader(
         test_dataset,

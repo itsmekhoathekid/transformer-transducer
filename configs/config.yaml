@@ -37,7 +37,7 @@ model:
 
 
 rnnt_loss:
-  blank: 4
+  blank: 0
   reduction: "mean" 
 
 scheduler:
