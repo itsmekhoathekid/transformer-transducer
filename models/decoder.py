@@ -18,7 +18,7 @@ class TransformerTransducerDecoder(nn.Module):
     ) -> None:
         super().__init__()
         self.emb = nn.Embedding(num_embeddings=vocab_size, embedding_dim=d_model)
-        self.pe = PositionalEmbedding(d_model)
+        self.pe = PositionalEncoding(d_model)
         self.dec_layers = nn.ModuleList(
             [
                 Self_Attention_Block(

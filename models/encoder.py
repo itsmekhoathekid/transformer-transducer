@@ -17,7 +17,8 @@ class TransformerTransducerEncoder(nn.Module):
     ):
         super().__init__()
         self.linear = nn.Linear(in_features=in_features, out_features=d_model)
-        self.pe = PositionalEmbedding(d_model)
+        self.pe = PositionalEncoding(d_model)
+        # self.pe = PositionalEmbedding(d_model)
         
 
         self.layers = nn.ModuleList(
@@ -62,9 +63,8 @@ class TransformerTransducerEncoder(nn.Module):
 
         lengths = torch.sum(mask, dim=1)
         out = self.linear(x)  # (batch, seq_len, d_model)
-        out = self.pe(out)  # (batch, seq_len, d_model)
         mask = mask.unsqueeze(1).unsqueeze(1)
-        
+
         for layer in self.layers:
             out = layer(out, mask)
         
