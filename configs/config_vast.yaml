@@ -31,7 +31,7 @@ model:
    n_enc_layers: 3
    n_dec_layers: 2
    d_model: 512
-   ff_size: 1024
+   ff_size: 2048
    h: 8
    joint_size: 1024
    p_dropout: 0.1
