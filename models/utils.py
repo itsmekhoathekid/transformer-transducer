@@ -7,18 +7,15 @@ from typing import Optional, Callable, Type, List
 
 class FeedForwardBlock(nn.Module):
 
-    def __init__(self, d_model: int, d_ff: int, d_ff2: int, dropout: float) -> None:
+    def __init__(self, d_model: int, d_ff: int, dropout: float) -> None:
         super().__init__()
         self.linear_1 = nn.Linear(d_model, d_ff) # w1 and b1
         self.dropout = nn.Dropout(dropout)
-        self.linear_2 = nn.Linear(d_ff, d_ff2) # w2 and b2
-        self.linear_3 = nn.Linear(d_ff2, d_model) # w3 and b3
+        self.linear_2 = nn.Linear(d_ff, d_model) # w2 and b2
 
     def forward(self, x):
         # (batch, seq_len, d_model) --> (batch, seq_len, d_ff) --> (batch, seq_len, d_model)
-        x =  self.dropout(self.linear_2(self.dropout(torch.relu(self.linear_1(x)))))
-        x = self.linear_3(x)
-        return x
+        return self.linear_2(self.dropout(torch.relu(self.linear_1(x))))
 
 class PositionalEncoding(nn.Module):
 
@@ -107,7 +104,7 @@ class Self_Attention_Block(nn.Module):
         super().__init__()
 
         self.attention = MultiHeadAttentionBlock(d_model, h, p_dropout)
-        self.feed_forward = FeedForwardBlock(d_model, ff_size, d_ff2, p_dropout)
+        self.feed_forward = FeedForwardBlock(d_model, ff_size,  p_dropout)
         self.dropout = nn.Dropout(p_dropout)
         self.residual_connections = nn.ModuleList(
             ResidualConnection(d_model, p_dropout) for _ in range(2)

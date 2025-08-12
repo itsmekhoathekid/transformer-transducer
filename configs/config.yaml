@@ -25,8 +25,7 @@ fbank:
   sample_rate: 16000
 
 model:
-   in_features: 80
-   in_features: 320
+   in_features: 192
    n_enc_layers: 2
    n_dec_layers: 2
    d_model: 64

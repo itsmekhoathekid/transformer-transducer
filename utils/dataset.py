@@ -1,11 +1,13 @@
 import torch
 import torch.nn as nn
 from torch.utils.data import Dataset
-import torch
 import torchaudio
 import torchaudio.transforms as T
-from speechbrain.lobes.features import Fbank
-import speechbrain as sb
+from tqdm import tqdm
+import numpy as np
+import librosa
+from glob import glob
+import os
 
 # [{idx : {encoded_text : Tensor, wav_path : text} }]
 
@@ -16,7 +18,7 @@ def load_json(path):
     """
     import json
 
-    with open(path, "r", encoding= 'utf-8') as f:
+    with open(path, "r", encoding='utf-8') as f:
         data = json.load(f)
     return data
 
@@ -37,12 +39,42 @@ class Vocab:
     def __len__(self):
         return len(self.vocab)
 
+def compute_gmvn(voice_path, sample_rate=16000):
+    wav_files = glob(os.path.join(voice_path, "**", "*.wav"), recursive=True)
 
+    win_length = int(0.025 * sample_rate)   # 25ms = 400 samples
+    hop_length = int(0.010 * sample_rate)   # 10ms = 160 samples
+    
+    sum_feats = torch.zeros(192)
+    sum_squares = torch.zeros(192)
+    total_frames = 0
 
+    for file in tqdm(wav_files):  # dataset là list/tập của waveform tensors
+        with torch.no_grad():
+            waveform, _ = librosa.load(file, sr=sample_rate)
+            stft = librosa.stft(waveform, n_fft=512, win_length=win_length, hop_length=hop_length)
+            mag = np.abs(stft[:64, :])  # Lấy 64 bins đầu tiên (low frequencies)
+            log_mag = np.log1p(mag)  # log(1 + x)
+            log_mag = log_mag.T  # [T, 64]
 
+            stacked_feats = []
+            for i in range(len(log_mag) - 6):  # skip rate = 3
+                if i % 3 == 0:
+                    stacked = np.concatenate([log_mag[i], log_mag[i+3], log_mag[i+6]])  # [192]
+                    stacked_feats.append(stacked)
+
+            stacked_feats = torch.tensor(np.array(stacked_feats), dtype=torch.float32)  # [T', 192]
+
+            total_frames += stacked_feats.shape[0]
+            sum_feats += stacked_feats.sum(dim=0)
+            sum_squares += (stacked_feats ** 2).sum(dim=0)
+
+    mean = sum_feats / total_frames
+    std = (sum_squares / total_frames - mean**2).sqrt()
+    return mean, std
 
 class Speech2Text(Dataset):
-    def __init__(self, json_path, vocab_path, config, apply_spec_augment=False):
+    def __init__(self, json_path, vocab_path, gmvn_mean = None, gmvn_std = None):
         super().__init__()
         self.data = load_json(json_path)
         self.vocab = Vocab(vocab_path)
@@ -50,52 +82,64 @@ class Speech2Text(Dataset):
         self.eos_token = self.vocab.get_eos_token()
         self.pad_token = self.vocab.get_pad_token()
         self.unk_token = self.vocab.get_unk_token()
-        self.apply_spec_augment = apply_spec_augment
         
-        freq_width = int(0.15 * config['fbank']['n_mels'])  # Tính toán độ rộng tần số
-
-        self.augment = nn.Sequential(
-            torchaudio.transforms.FrequencyMasking(freq_mask_param=freq_width),
-            torchaudio.transforms.FrequencyMasking(freq_mask_param=freq_width),  # 2 mask
-            torchaudio.transforms.TimeMasking(time_mask_param=config['fbank']['n_mels'], p=1.0),
-            torchaudio.transforms.TimeMasking(time_mask_param=config['fbank']['n_mels'], p=1.0)         # 2 mask
-        )
-
-        self.fbank = Fbank(
-            sample_rate=config['fbank']['sample_rate'],
-            n_mels=config['fbank']['n_mels'],
-            n_fft=config['fbank']['n_fft'],
-            win_length=config['fbank']['win_length'],
-            hop_length=config['fbank']['hop_length'],
-        )
-
+        self.gmvn_mean = gmvn_mean
+        self.gmvn_std = gmvn_std
+        # stats = torch.load(cmvn_stats) 
+        # self.cmvn_mean = stats['mean']
+        # self.cmvn_std = stats['std']
+            
     def __len__(self):
         return len(self.data)
 
-    def get_fbank(self, waveform):
-        fbank = self.fbank(waveform)
-        if self.apply_spec_augment:
-            fbank = self.augment(fbank)
-        return fbank.squeeze(0)  # [T, 80]
+    def extract_features(self, wav_file, sr=16000):
+        # Load waveform
+        y, _ = librosa.load(wav_file, sr=sr)
 
+        # Window và hop size
+        win_length = int(0.025 * sr)   # 25ms = 400 samples
+        hop_length = int(0.010 * sr)   # 10ms = 160 samples
 
-    def extract_from_path(self, wave_path):
-        sig  = sb.dataio.dataio.read_audio(wave_path)
-        return self.get_fbank(sig.unsqueeze(0))
+        # STFT magnitude
+        stft = librosa.stft(y, n_fft=512, win_length=win_length, hop_length=hop_length, window='hamming')
+        mag = np.abs(stft[:64, :])  # Lấy 64 bins đầu tiên (low frequencies)
+
+        # Log magnitude
+        log_mag = np.log1p(mag)  # log(1 + x)
+
+        # Transpose: (64, T) -> (T, 64)
+        log_mag = log_mag.T
+
+        # Frame stacking: 3 frames, skip = 3
+        stacked_feats = []
+        for i in range(0, len(log_mag) - 6, 3):  # skip rate = 3
+            stacked = np.concatenate([log_mag[i], log_mag[i+3], log_mag[i+6]])
+            stacked_feats.append(stacked)
+
+        stacked_feats = torch.tensor(np.array(stacked_feats), dtype=torch.float)
+        mean_feats = stacked_feats.mean(dim=0, keepdim=True)
+        std_feats = stacked_feats.std(dim=0, keepdim=True)
+
+        # stacked_feats = (stacked_feats - self.gmvn_mean) / (self.gmvn_std + 1e-5)
+        if self.gmvn_mean is not None and self.gmvn_std is not None:
+            stacked_feats = (stacked_feats - self.gmvn_mean) / (self.gmvn_std + 1e-5)
+        else:
+            stacked_feats = (stacked_feats - mean_feats) / (std_feats + 1e-5)
+        return stacked_feats    
 
     def __getitem__(self, idx):
         current_item = self.data[idx]
         wav_path = current_item["wav_path"]
         encoded_text = torch.tensor(current_item["encoded_text"] + [self.eos_token], dtype=torch.long)
         decoder_input = torch.tensor([self.sos_token] + current_item["encoded_text"] + [self.pad_token], dtype=torch.long)
-        fbank = self.extract_from_path(wav_path).float()  # [T, 512]
-
+        fbank = self.extract_features(wav_path)  # [T, 80]
+        
         return {
-            "text": encoded_text,
-            "fbank": fbank,
+            "text": encoded_text,        # [T_text]
+            "fbank": fbank,              # [T_audio, 80]
             "text_len": len(encoded_text),
             "fbank_len": fbank.shape[0],
-            "decoder_input": decoder_input,
+            "decoder_input": decoder_input,  # [T_text + 1]
         }
     
 from torch.nn.utils.rnn import pad_sequence
