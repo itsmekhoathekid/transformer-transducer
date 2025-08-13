@@ -22,7 +22,7 @@ def load_config(config_path: str) -> dict:
 def load_model(config: dict, vocab_len: int, device: torch.device) -> TransformerTransducer:
     checkpoint_path = os.path.join(
         config['training']['save_path'],
-        f"transformer_transducer_epoch_2"
+        f"transformer_transducer_epoch_57"
     )
     print(f"Loading checkpoint from: {checkpoint_path}")
     model = TransformerTransducer(
@@ -86,7 +86,7 @@ class TransducerPredictor:
             if token_id == self.eos:
                 break
             
-            if token_id != self.blank:
+            if token_id != self.blank and token_id != self.eos:
                 pred_tokens.append(token_id)
                 targets = torch.cat([targets, top_token.unsqueeze(1)], dim=1)
 
@@ -109,7 +109,6 @@ def main():
     test_dataset = Speech2Text(
         json_path=config['training']['test_path'],
         vocab_path=config['training']['vocab_path'],
-        config = config
     )
     test_loader = torch.utils.data.DataLoader(
         test_dataset,
@@ -121,44 +120,40 @@ def main():
     vocab_len = len(vocab)
 
     model = load_model(config, vocab_len, device)
-    predictor = TransducerPredictor(model, vocab, device, sos=1, eos=2, blank=4)
+    predictor = TransducerPredictor(model, vocab, device, sos=1, eos=2, blank=0)
 
     all_predictions = []
     all_references = []
 
     j = 0 
-    for batch in tqdm(test_loader, desc="Inference"):
-        speech = batch["fbank"].to(device)
-        speech_mask = batch["fbank_mask"].to(device)
-        
-        
-
-        encoder_out, _ = model.encoder(speech, speech_mask)
-        pred_transcription = predictor.greedy_decode(encoder_out, max_length=encoder_out.size(1))
-        all_predictions.append(pred_transcription)
-        
-        ref_ids = batch["text"].squeeze(0).tolist()
-        idx2token = {idx: token for token, idx in vocab.items()}
-        ref_tokens = [idx2token.get(token, "") for token in ref_ids]
-        ref_transcription = " ".join(ref_tokens)
-        print("🔊", pred_transcription)
-        print("🎯", ref_transcription)
-        all_references.append(ref_transcription)
-        j+=1
-        if j == 5:
-            break
+    with open(config["training"]["result"], 'w', encoding='utf-8') as fout:
+        for batch in tqdm(test_loader, desc="Inference"):
+            speech = batch["fbank"].to(device)
+            speech_mask = batch["fbank_mask"].to(device)
+            
+            
+    
+            encoder_out, _ = model.encoder(speech, speech_mask)
+            pred_transcription = predictor.greedy_decode(encoder_out, max_length=encoder_out.size(1))
+            all_predictions.append(pred_transcription)
+            
+            ref_ids = batch["text"].squeeze(0).tolist()
+            idx2token = {idx: token for token, idx in vocab.items()}
+            ref_tokens = [idx2token.get(token, "") for token in ref_ids][:-1]
+            ref_transcription = " ".join(ref_tokens)
+            print("🔊", pred_transcription)
+            print("🎯", ref_transcription)
+            all_references.append(ref_transcription)
+            fout.write(f"Predict text: {pred_transcription}\n")
+            fout.write(f"Ground truth: {ref_transcription}\n")
+            fout.write("---------------\n")
     
    
 
     wer_score = wer(all_references, all_predictions)
     cer_score = cer(all_references, all_predictions)
 
-    print("\n----- Inference Results -----")
-    for i, (ref, pred) in enumerate(zip(all_references, all_predictions)):
-        print(f"Sample {i}:")
-        print(f"  Reference: {ref}")
-        print(f"  Prediction: {pred}")
-        print()
+    
 
     print(f"Average WER: {wer_score:.4f}")
     print(f"Average CER: {cer_score:.4f}")

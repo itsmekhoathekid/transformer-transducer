@@ -8,6 +8,7 @@ training:
   vocab_path : "workspace/dataset/vocab_w2i.json"
   reload: False
   log_file: "workspace/transformer-transducer/transformer_transducer_log.txt"
+  result : "workspace/transformer-transducer/result.txt"
 
 fbank:
   n_mels: 80
@@ -19,7 +20,7 @@ fbank:
 
 optim:
   type: sgd 
-  lr: 0.0003
+  lr: 0.0008
   weight_decay: 0.0001
   momentum: 0.9
   decay_rate: 0.5
@@ -27,14 +28,14 @@ optim:
 
 
 model:
-   in_features: 192
+   in_features: 200
    n_enc_layers: 3
    n_dec_layers: 2
    d_model: 512
    ff_size: 1024
    h: 8
    joint_size: 1024
-   p_dropout: 0.1
+   p_dropout: 0.3
    model_name: "transformer_transducer"
 
 

@@ -73,6 +73,19 @@ def compute_gmvn(voice_path, sample_rate=16000):
     std = (sum_squares / total_frames - mean**2).sqrt()
     return mean, std
 
+def stack_context(x, left=3, right=1):
+    """x: (T, D) -> (T, (left+1+right)*D) | pad biên bằng replicate."""
+    T, D = x.shape
+    pads = []
+    for off in range(-left, right + 1):
+        idx = np.clip(np.arange(T) + off, 0, T - 1)
+        pads.append(x[idx])
+    return np.concatenate(pads, axis=1)
+
+def subsample(x, base_hop_ms=10, target_hop_ms=30):
+    stride = target_hop_ms // base_hop_ms
+    return x[::stride]
+
 class Speech2Text(Dataset):
     def __init__(self, json_path, vocab_path, gmvn_mean = None, gmvn_std = None):
         super().__init__()
@@ -93,39 +106,28 @@ class Speech2Text(Dataset):
         return len(self.data)
 
     def extract_features(self, wav_file, sr=16000):
-        # Load waveform
-        y, _ = librosa.load(wav_file, sr=sr)
+        y, sr = librosa.load(wav_file, sr=sr)
+        win_length = int(0.025 * sr)   # 25 ms
+        hop_length = int(0.010 * sr)   # 10 ms
+        # n_fft = next power of 2 >= win_length
+        n_fft = 1
+        while n_fft < win_length:
+            n_fft *= 2
 
-        # Window và hop size
-        win_length = int(0.025 * sr)   # 25ms = 400 samples
-        hop_length = int(0.010 * sr)   # 10ms = 160 samples
+        S = librosa.feature.melspectrogram(
+            y=y, sr=sr, n_mels=40, n_fft=n_fft,
+            win_length=win_length, hop_length=hop_length,
+            window='hann', power=2.0, center=True
+        )
+        # log-mel (dB)
+        x = librosa.power_to_db(S, ref=np.max).T   # (T, 40)
+        
+        mu = x.mean(axis=0, keepdims=True)
+        sg = x.std(axis=0, keepdims=True) + 1e-8
+        x = (x - mu) / sg
+        x = stack_context(x, left=3, right=1) 
+        return torch.tensor(subsample(x, 10, 30))
 
-        # STFT magnitude
-        stft = librosa.stft(y, n_fft=512, win_length=win_length, hop_length=hop_length, window='hamming')
-        mag = np.abs(stft[:64, :])  # Lấy 64 bins đầu tiên (low frequencies)
-
-        # Log magnitude
-        log_mag = np.log1p(mag)  # log(1 + x)
-
-        # Transpose: (64, T) -> (T, 64)
-        log_mag = log_mag.T
-
-        # Frame stacking: 3 frames, skip = 3
-        stacked_feats = []
-        for i in range(0, len(log_mag) - 6, 3):  # skip rate = 3
-            stacked = np.concatenate([log_mag[i], log_mag[i+3], log_mag[i+6]])
-            stacked_feats.append(stacked)
-
-        stacked_feats = torch.tensor(np.array(stacked_feats), dtype=torch.float)
-        mean_feats = stacked_feats.mean(dim=0, keepdim=True)
-        std_feats = stacked_feats.std(dim=0, keepdim=True)
-
-        # stacked_feats = (stacked_feats - self.gmvn_mean) / (self.gmvn_std + 1e-5)
-        if self.gmvn_mean is not None and self.gmvn_std is not None:
-            stacked_feats = (stacked_feats - self.gmvn_mean) / (self.gmvn_std + 1e-5)
-        else:
-            stacked_feats = (stacked_feats - mean_feats) / (std_feats + 1e-5)
-        return stacked_feats    
 
     def __getitem__(self, idx):
         current_item = self.data[idx]

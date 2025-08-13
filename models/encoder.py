@@ -63,6 +63,7 @@ class TransformerTransducerEncoder(nn.Module):
 
         lengths = torch.sum(mask, dim=1)
         out = self.linear(x)  # (batch, seq_len, d_model)
+        out = self.pe(out)
         mask = mask.unsqueeze(1).unsqueeze(1)
 
         for layer in self.layers:

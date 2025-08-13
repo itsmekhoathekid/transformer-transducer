@@ -8,7 +8,7 @@ training:
   vocab_path : "/home/anhkhoa/transformer_transducer_speeQ/data/vocab.json"
   reload: False
   log_file: "/home/anhkhoa/transformer-transducer/transformer_transducer_log.txt"
-  
+  result : "workspace/transformer-transducer/result.txt"
 
 
 optim:
@@ -25,7 +25,7 @@ fbank:
   sample_rate: 16000
 
 model:
-   in_features: 192
+   in_features: 200
    n_enc_layers: 2
    n_dec_layers: 2
    d_model: 64

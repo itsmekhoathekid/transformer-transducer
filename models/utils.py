@@ -99,7 +99,6 @@ class Self_Attention_Block(nn.Module):
         ff_size: int,
         h: int,
         p_dropout: float,
-        d_ff2 : int
     ) -> None:
         super().__init__()
 
