@@ -24,8 +24,7 @@ class TransformerTransducer(nn.Module):
             d_model=d_model,
             ff_size=ff_size,
             h=h,
-            p_dropout=p_dropout,
-            joint_size=joint_size
+            p_dropout=p_dropout
         )
         self.decoder = TransformerTransducerDecoder(
             vocab_size=n_classes,
@@ -33,8 +32,7 @@ class TransformerTransducer(nn.Module):
             d_model=d_model,
             ff_size=ff_size,
             h=h,
-            p_dropout=p_dropout,
-            joint_size=joint_size
+            p_dropout=p_dropout
         )
         # self.audio_fc = nn.Linear(in_features=d_model, out_features=joint_size)
         # self.text_fc = nn.Linear(in_features=d_model, out_features=joint_size)

@@ -14,7 +14,6 @@ class TransformerTransducerDecoder(nn.Module):
         ff_size: int,
         h: int,
         p_dropout: float,
-        joint_size: int
     ) -> None:
         super().__init__()
         self.emb = nn.Embedding(num_embeddings=vocab_size, embedding_dim=d_model)
@@ -25,8 +24,7 @@ class TransformerTransducerDecoder(nn.Module):
                     d_model=d_model,
                     ff_size=ff_size,
                     h=h,
-                    p_dropout=p_dropout,
-                    d_ff2=joint_size
+                    p_dropout=p_dropout
                 )
                 for _ in range(n_layers)
             ]
