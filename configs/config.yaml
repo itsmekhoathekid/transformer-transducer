@@ -9,6 +9,7 @@ training:
   reload: False
   log_file: "/home/anhkhoa/transformer-transducer/transformer_transducer_log.txt"
   result : "workspace/transformer-transducer/result.txt"
+  type: "char" # Options: [char, phoneme]
 
 
 optim:

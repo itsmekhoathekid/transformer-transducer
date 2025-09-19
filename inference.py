@@ -51,7 +51,7 @@ class TransducerPredictor:
         self.blank = blank
         self.idx2token = {idx: token for token, idx in vocab.items()}
 
-    def greedy_decode(self, encoder_outputs: torch.Tensor, max_length: int = 100) -> str:
+    def greedy_decode(self, encoder_outputs: torch.Tensor, max_length: int = 100, typee : str = "normal") -> str:
         """
         Greedy decode for Transformer Transducer (clean version, no blank blocking).
         Args:
@@ -90,6 +90,9 @@ class TransducerPredictor:
                 targets = torch.cat([targets, top_token.unsqueeze(1)], dim=1)
 
         tokens = [self.idx2token.get(t, "") for t in pred_tokens]
+        if typee == "phoneme":
+            return "".join(tokens).replace("<space>", " ").strip()
+        
         return " ".join(tokens)
 
 
@@ -134,7 +137,7 @@ def main():
             
     
             encoder_out, _ = model.encoder(speech, speech_mask)
-            pred_transcription = predictor.greedy_decode(encoder_out, max_length=encoder_out.size(1))
+            pred_transcription = predictor.greedy_decode(encoder_out, max_length=encoder_out.size(1), typee = config['training']['type'])
             all_predictions.append(pred_transcription)
             
             ref_ids = batch["text"].squeeze(0).tolist()

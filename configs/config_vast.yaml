@@ -9,6 +9,7 @@ training:
   reload: False
   log_file: "workspace/transformer-transducer/transformer_transducer_log.txt"
   result : "workspace/transformer-transducer/result.txt"
+  type: "phoneme" # Options: [char, phoneme]
 
 fbank:
   n_mels: 80
